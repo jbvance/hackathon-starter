@@ -36,19 +36,8 @@ var instanceMethods = {
   }
 };
 
-var beforeSaveHook = function(user, options, fn) {
-  if(user.changed('password')) {
-    this.encryptPassword(user.password, function(hash, err) {
-      user.password = hash;
-      fn(null, user);
-    });
-    return;
-  }
-  fn(null, user);
-};
-
 module.exports = function(db, DataTypes) {
-  var User = db.define('User', {
+  const User = db.define('User', {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
@@ -96,20 +85,7 @@ module.exports = function(db, DataTypes) {
       associate: function(models) {
         //User.hasMany(models.Role);
       },
-      encryptPassword: function(password, cb) {
-        if (!password) {
-          cb('', null);
-          return;
-        }
-
-        bcrypt.genSalt(10, function(err, salt) {
-          if (err) { cb(null, err); return; }
-          bcrypt.hash(password, salt, null, function(hErr, hash) {
-            if (hErr) { cb(null, hErr); return; }
-            cb(hash, null);
-          });
-        });
-      },
+    
       findUser: function(email, password, cb) {
         User.findOne({
           where: { email: email }
@@ -130,8 +106,7 @@ module.exports = function(db, DataTypes) {
       }
     },
     hooks: {
-      beforeUpdate: beforeSaveHook,
-      beforeCreate: beforeSaveHook
+      
     },
     indexes: [
       {
@@ -161,6 +136,34 @@ module.exports = function(db, DataTypes) {
       }
     ]
   });
+  
+  User.addHook('beforeSave', (user, options) => {
+   return  new Promise((resolve, reject) => {
+      if(user.changed('password')) {
+        user.encryptPassword(user.password, function(hash, err) {
+          console.log("USER", user);
+          user.password = hash;
+          resolve();
+        });
+       
+      }
+    });
+  })
+  
+  User.prototype.encryptPassword = function(password, cb) {
+    if (!password) {
+      cb('', null);
+      return;
+    }
+  
+    bcrypt.genSalt(10, function(err, salt) {
+      if (err) { cb(null, err); return; }
+      bcrypt.hash(password, salt, null, function(hErr, hash) {
+        if (hErr) { cb(null, hErr); return; }
+        cb(hash, null);
+      });
+    });
+  }
 
   return User;
 };

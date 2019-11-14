@@ -5,7 +5,9 @@ const passport = require('passport');
 const _ = require('lodash');
 const validator = require('validator');
 const mailChecker = require('mailchecker');
-const User = require('../models/User');
+//const Sequelize = require('sequelize');
+//const db = require('../models/index');
+const User = require('../models/index').User;
 
 const randomBytesAsync = promisify(crypto.randomBytes);
 
@@ -93,27 +95,50 @@ exports.postSignup = (req, res, next) => {
   }
   req.body.email = validator.normalizeEmail(req.body.email, { gmail_remove_dots: false });
 
-  const user = new User({
-    email: req.body.email,
-    password: req.body.password
-  });
-
-  User.findOne({ email: req.body.email }, (err, existingUser) => {
-    if (err) { return next(err); }
-    if (existingUser) {
-      req.flash('errors', { msg: 'Account with that email address already exists.' });
-      return res.redirect('/signup');
+  // const user = new User({
+  //   email: req.body.email,
+  //   password: req.body.password
+  // });
+  
+  const user = req.body;
+  
+  User.findOne({ where: { email: req.body.email} })
+    .then(existingUser => {
+      console.log('EXISTING  USER', existingUser);
+        if (existingUser) {
+          req.flash('errors', { msg: 'Account with that email address already exists.' });
+          return res.redirect('/signup');
     }
-    user.save((err) => {
-      if (err) { return next(err); }
-      req.logIn(user, (err) => {
-        if (err) {
-          return next(err);
-        }
-        res.redirect('/');
-      });
+    //No existing user found, create new User
+        User.create(req.body)
+          .then((user) => {
+            console.log("NEWLY CREATED USER", user);
+            res.redirect('/')
+          })
+          .catch(err => {
+            return next(err);
+          });
+    })
+    .catch((err) => {
+      return next(err);
     });
-  });
+
+  // User.findOne({ email: req.body.email }, (err, existingUser) => {
+  //   if (err) { return next(err); }
+  //   if (existingUser) {
+  //     req.flash('errors', { msg: 'Account with that email address already exists.' });
+  //     return res.redirect('/signup');
+  //   }
+  //   User.create(req.body, (err) => {
+  //     if (err) { return next(err); }
+  //     req.logIn(user, (err) => {
+  //       if (err) {
+  //         return next(err);
+  //       }
+  //       res.redirect('/');
+  //     });
+  //   });
+  // });
 };
 
 /**

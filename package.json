@@ -76,7 +76,7 @@
     "popper.js": "^1.16.0",
     "pug": "^2.0.4",
     "request": "^2.88.0",
-    "sequelize": "^4.32.0",
+    "sequelize": "^5.21.2",
     "sequelize-cli": "^5.5.1",
     "stripe": "^7.11.0",
     "tumblr.js": "^2.0.2",
