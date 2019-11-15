@@ -76,6 +76,11 @@ module.exports = function(db, DataTypes) {
       allowNull: false,
       isEmail: true
     },
+    emailVerified: { 
+      type: DataTypes.BOOLEAN, 
+      allowNull: false, 
+      defaultValue: false
+    },
     profile: DataTypes.JSON,
     tokens: DataTypes.JSON
   }, {
@@ -148,6 +153,7 @@ module.exports = function(db, DataTypes) {
           resolve();
         });
       }
+      resolve();
     });
   });
   
