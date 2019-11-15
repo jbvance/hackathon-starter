@@ -20,7 +20,6 @@ const randomBytesAsync = promisify(crypto.randomBytes);
  exports.getAllUsers = (req, res) => {
    User.findAll()
     .then(users => {
-      console.log("ALL USERS", users);
       return res.status(200).json(users);
     })
  }
@@ -118,7 +117,6 @@ exports.postSignup = (req, res, next) => {
   
   User.findOne({ where: { email: req.body.email} })
     .then(existingUser => {
-      console.log('EXISTING  USER', existingUser);
         if (existingUser) {
           req.flash('errors', { msg: 'Account with that email address already exists.' });
           return res.redirect('/signup');
@@ -211,15 +209,19 @@ exports.postUpdatePassword = (req, res, next) => {
     return res.redirect('/account');
   }
 
-  User.findById(req.user.id, (err, user) => {
-    if (err) { return next(err); }
-    user.password = req.body.password;
-    user.save((err) => {
-      if (err) { return next(err); }
-      req.flash('success', { msg: 'Password has been changed.' });
-      res.redirect('/account');
-    });
-  });
+ User.findByPk(req.user.id)
+ .then(user => {
+   //user.password = req.body.password;
+   user.encryptPassword(req.body.password, function(hash, error) {
+     user.password = hash;
+     return user.save();
+   })
+ })
+ .then(() => {
+   req.flash('success', { msg: 'Password has been changed.' });
+   res.redirect('/account');
+ })
+ .catch(err => next(err));
 };
 
 /**

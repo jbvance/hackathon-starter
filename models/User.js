@@ -142,9 +142,15 @@ module.exports = function(db, DataTypes) {
     ]
   });
   
-  User.addHook('beforeSave', (user, options) => {
-   return  new Promise((resolve, reject) => {
-      if(user.changed('password')) {
+  User.addHook('beforeCreate', (user, options) => {
+    return new Promise((resolve, reject) => {
+        user.profile = {
+        name: '',
+        gender: '',
+        location: '',
+        website: ''
+      };
+    if(user.changed('password')) {
         user.encryptPassword(user.password, function(hash, err) {
           if (err) {
             reject(err);
@@ -153,18 +159,9 @@ module.exports = function(db, DataTypes) {
           resolve();
         });
       }
-      resolve();
-    });
+    })
+    
   });
-  
-  User.addHook('beforeCreate', (user, options) => {
-    user.profile = {
-      name: '',
-      gender: '',
-      location: '',
-      website: ''
-    }
-  })
   
   User.prototype.encryptPassword = function(password, cb) {
     if (!password) {
@@ -184,7 +181,6 @@ module.exports = function(db, DataTypes) {
     // validate passowrd on login
   // returns a promise
   User.prototype.comparePassword = function(password) {
-    console.log("PASSWORDS", password, this.password);
     return bcrypt.compare(password, this.password);
   }
   

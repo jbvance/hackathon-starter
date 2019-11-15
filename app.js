@@ -391,8 +391,8 @@ if (process.env.NODE_ENV === "development") {
  * Start Express server.
  */
 
-models.sequelize.sync().then(() => { 
-//models.sequelize.sync({ force: true }).then(() => {
+//models.sequelize.sync().then(() => { 
+models.sequelize.sync({ force: true }).then(() => {
   myStore.sync({ force: true }).then(() => {
     app.listen(app.get("port"), () => {
       console.log(
