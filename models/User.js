@@ -141,14 +141,12 @@ module.exports = function(db, DataTypes) {
    return  new Promise((resolve, reject) => {
       if(user.changed('password')) {
         user.encryptPassword(user.password, function(hash, err) {
-          console.log("USER", user);
           user.password = hash;
           resolve();
         });
-       
       }
     });
-  })
+  });
   
   User.prototype.encryptPassword = function(password, cb) {
     if (!password) {
