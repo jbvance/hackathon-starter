@@ -170,6 +170,8 @@ app.get("/signup", userController.getSignup);
 app.post("/signup", userController.postSignup);
 app.get("/contact", contactController.getContact);
 app.post("/contact", contactController.postContact);
+// REMOVE FOR PRODUCTION OR RESTRICT TO ADMIN
+app.get('/users', userController.getAllUsers);
 app.get(
   "/account/verify",
   passportConfig.isAuthenticated,

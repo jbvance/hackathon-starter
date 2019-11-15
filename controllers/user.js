@@ -11,6 +11,20 @@ const User = require('../models/index').User;
 
 const randomBytesAsync = promisify(crypto.randomBytes);
 
+
+
+/**
+ * GET /users
+ * List Users - FOR TEST ONLY.
+ */
+ exports.getAllUsers = (req, res) => {
+   User.findAll()
+    .then(users => {
+      console.log("ALL USERS", users);
+      return res.status(200).json(users);
+    })
+ }
+
 /**
  * GET /login
  * Login page.
@@ -112,7 +126,6 @@ exports.postSignup = (req, res, next) => {
     //No existing user found, create new User
         User.create(req.body)
           .then((user) => {
-            console.log("NEWLY CREATED USER", user);
             res.redirect('/')
           })
           .catch(err => {

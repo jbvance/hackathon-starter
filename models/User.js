@@ -1,6 +1,6 @@
 'use strict';
 
-var bcrypt = require('bcrypt-nodejs');
+var bcrypt = require('bcrypt');
 var crypto = require('crypto');
 
 //HMAC version
@@ -141,12 +141,24 @@ module.exports = function(db, DataTypes) {
    return  new Promise((resolve, reject) => {
       if(user.changed('password')) {
         user.encryptPassword(user.password, function(hash, err) {
+          if (err) {
+            reject(err);
+          }
           user.password = hash;
           resolve();
         });
       }
     });
   });
+  
+  User.addHook('beforeCreate', (user, options) => {
+    user.profile = {
+      name: '',
+      gender: '',
+      location: '',
+      website: ''
+    }
+  })
   
   User.prototype.encryptPassword = function(password, cb) {
     if (!password) {
@@ -156,12 +168,20 @@ module.exports = function(db, DataTypes) {
   
     bcrypt.genSalt(10, function(err, salt) {
       if (err) { cb(null, err); return; }
-      bcrypt.hash(password, salt, null, function(hErr, hash) {
+      bcrypt.hash(password, salt, function(hErr, hash) {
         if (hErr) { cb(null, hErr); return; }
         cb(hash, null);
       });
     });
+  };
+  
+    // validate passowrd on login
+  // returns a promise
+  User.prototype.comparePassword = function(password) {
+    console.log("PASSWORDS", password, this.password);
+    return bcrypt.compare(password, this.password);
   }
-
+  
+  
   return User;
 };
