@@ -82,7 +82,10 @@ module.exports = function(db, DataTypes) {
       defaultValue: false
     },
     profile: DataTypes.JSON,
-    tokens: DataTypes.JSON
+    tokens: {
+      type: DataTypes.JSON,
+      defaultValue: {}
+    }
   }, {
     tableName: 'pl_users',
     instanceMethods: instanceMethods,
@@ -145,11 +148,12 @@ module.exports = function(db, DataTypes) {
   User.addHook('beforeCreate', (user, options) => {
     return new Promise((resolve, reject) => {
         user.profile = {
-        name: '',
-        gender: '',
-        location: '',
-        website: ''
-      };
+          name: '',
+          gender: '',
+          location: '',
+          website: ''
+        };
+        user.tokens = {};
     if(user.changed('password')) {
         user.encryptPassword(user.password, function(hash, err) {
           if (err) {
