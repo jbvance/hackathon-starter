@@ -81,7 +81,10 @@ module.exports = function(db, DataTypes) {
       allowNull: false, 
       defaultValue: false
     },
-    profile: DataTypes.JSON,
+    profile: {
+      type: DataTypes.JSON,
+      defaultValue: {}
+    },
     tokens: {
       type: DataTypes.JSON,
       defaultValue: {}
