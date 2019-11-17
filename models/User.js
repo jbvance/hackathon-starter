@@ -146,14 +146,16 @@ module.exports = function(db, DataTypes) {
   });
   
   User.addHook('beforeCreate', (user, options) => {
+   
     return new Promise((resolve, reject) => {
-        user.profile = {
+        user.profile = user.profile || {
           name: '',
           gender: '',
           location: '',
           website: ''
         };
-        user.tokens = {};
+        user.tokens = user.tokens || {};
+         console.log("IN BEFORE CREATE HOOK", user);
     if(user.changed('password')) {
         user.encryptPassword(user.password, function(hash, err) {
           if (err) {
@@ -163,6 +165,7 @@ module.exports = function(db, DataTypes) {
           resolve();
         });
       }
+      resolve();
     })
     
   });

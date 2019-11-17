@@ -160,55 +160,61 @@ passport.use(new FacebookStrategy({
   passReqToCallback: true
 }, (req, accessToken, refreshToken, profile, done) => {
   if (req.user) {
-    console.log("GOT HERE FACEBOOK");
-    User.findOne({ where: {facebookId: profile.id} }, (err, existingUser) => {
-      if (err) { return done(err); }
+    User.findOne({ where: {facebookId: profile.id} })
+    .then(existingUser => {
       if (existingUser) {
         req.flash('errors', { msg: 'There is already a Facebook account that belongs to you. Sign in with that account or delete it, then link it with your current account.' });
-        done(err);
+        return done(null);
       } else {
-        User.findByPk(req.user.id, (err, user) => {
-          if (err) { return done(err); }
-          user.facebookId = profile.id;
-          user.tokens.push({ kind: 'facebook', accessToken });
-          user.profile.name = user.profile.name || `${profile.name.givenName} ${profile.name.familyName}`;
-          user.profile.gender = user.profile.gender || profile._json.gender;
-          user.profile.picture = user.profile.picture || `https://graph.facebook.com/${profile.id}/picture?type=large`;
-          user.save()
-          .then(user =>{
-            req.flash('info', { msg: 'Facebook account has been linked.' });
-            done(err, user);
+        User.findByPk(req.user.id)
+         .then(user => {
+            user.facebookId = profile.id;
+            console.log("PROFILE ID", profile.id);
+            user.profile.name = user.profile.name || `${profile.name.givenName} ${profile.name.familyName}`;
+            user.profile.gender = user.profile.gender || profile._json.gender;
+            user.profile.picture = user.profile.picture || `https://graph.facebook.com/${profile.id}/picture?type=large`;
+            return user.update({ facebookId: profile.id, tokens: {...user.tokens, facebook: accessToken }, profile: {...user.profile } });
           })
-          .catch(err => done(err));
-        });
+         .then(user => {
+            req.flash('info', { msg: 'Facebook account has been linked.' });
+            done(null, user);
+          })
       }
-    });
+    })
+    .catch(err => done(err));
   } else {
-    User.findOne({ where: { facebook: profile.id }}, (err, existingUser) => {
-      if (err) { return done(err); }
-      if (existingUser) {
-        return done(null, existingUser);
-      }
-      User.findOne({ where: { email: profile._json.email }}, (err, existingEmailUser) => {
-        if (err) { return done(err); }
-        if (existingEmailUser) {
-          req.flash('errors', { msg: 'There is already an account using this email address. Sign in to that account and link it with Facebook manually from Account Settings.' });
-          done(err);
+    // NOT LOGGED IN, LOG IN HERE WITH FACEBOOK
+      User.findOne({ where: { facebookId: profile.id }})
+      .then(existingUser => {
+        if(existingUser) {
+          return done(null, existingUser);
         } else {
-          const user = new User();
-          user.email = profile._json.email;
-          user.facebookId = profile.id;
-          user.tokens.push({ kind: 'facebook', accessToken });
-          user.profile.name = `${profile.name.givenName} ${profile.name.familyName}`;
-          user.profile.gender = profile._json.gender;
-          user.profile.picture = `https://graph.facebook.com/${profile.id}/picture?type=large`;
-          user.profile.location = (profile._json.location) ? profile._json.location.name : '';
-          user.save((err) => {
-            done(err, user);
-          });
+          User.findOne({ where: { email: profile._json.email }})
+            .then(existingEmailUser => {
+                if (existingEmailUser) {
+                  req.flash('errors', { msg: 'There is already an account using this email address. Sign in to that account and link it with Facebook manually from Account Settings.' });
+                  done(null);
+                } else {
+                  const user = new User();
+                  user.profile = {};
+                  user.tokens = {};
+                  user.email = profile._json.email;
+                  user.facebookId = profile.id;
+                  //user.tokens.push({ kind: 'facebook', accessToken });
+                  user.profile.name = `${profile.name.givenName} ${profile.name.familyName}`;
+                  user.profile.gender = profile._json.gender;
+                  user.profile.picture = `https://graph.facebook.com/${profile.id}/picture?type=large`;
+                  user.profile.location = (profile._json.location) ? profile._json.location.name : '';
+                  return user.update({ email: user.email, facebookId: user.facebookId, tokens: {...user.tokens, facebook: accessToken}, profile: { ...user.profile }})
+                }
+            })
+            .then(updatedUser => {
+              done(null, updatedUser);
+            });
         }
-      });
-    });
+      })
+      
+      .catch(err => done(err));
   }
 }));
 
@@ -222,6 +228,7 @@ passport.use(new GitHubStrategy({
   passReqToCallback: true,
   scope: ['user:email']
 }, (req, accessToken, refreshToken, profile, done) => {
+  
   if (req.user) {
     User.findOne({ where: { githubId: profile.id}})
       .then(existingUser => {
@@ -244,7 +251,6 @@ passport.use(new GitHubStrategy({
               //return user.save({ ...user, profile: user.profile});
             })
             .then(savedUser => {
-              console.log('UPDATED USER', savedUser);
               req.flash('info', { msg: 'GitHub account has been linked.' });
               done(null, savedUser);
             })
@@ -257,28 +263,37 @@ passport.use(new GitHubStrategy({
         .then(existingUser => {
          if (existingUser) {
            return done(null, existingUser);
+         } else {
+           
+           const githubEmail = _.get(_.orderBy(profile.emails, ['primary', 'verified'], ['desc', 'desc']), [0, 'value'], null)
+           return User.findOne({ where: {email: githubEmail }})
+           .then(existingEmailUser => {
+              //console.log("EXISTING EMAIL USER", existingEmailUser, profile);
+              if (existingEmailUser) {
+                req.flash('errors', { msg: 'There is already an account using this email address. Sign in to that account and link it with GitHub manually from Account Settings.' });
+                return done(null);
+              } else {
+                console.log("CREATING NEW USER");
+                  const user = new User();
+                  user.profile = {};
+                  user.tokens = {};
+                  //console.log("NEW USER", user);
+                  user.email = _.get(_.orderBy(profile.emails, ['primary', 'verified'], ['desc', 'desc']), [0, 'value'], null);
+                  user.githubId = profile.id;
+                  //user.tokens.push({ kind: 'github', accessToken });
+                  user.profile.name = profile.displayName;
+                  user.profile.picture = profile._json.avatar_url;
+                  user.profile.location = profile._json.location;
+                  user.profile.website = profile._json.blog;
+                  user.tokens = { ...user.tokens, 'github': accessToken };
+                  user.save({ email: user.email, githubId: user.githubId, tokens: {...user.tokens, github: accessToken}, profile: { ...user.profile }})
+                   .then(updatedUser => {
+                    console.log("UPDATED GITHUB USER");
+                    done(null, updatedUser);
+                  })
+              }
+          })
          }
-         return User.findOne({ where: {email: profile._json.email }})
-        })
-        .then(existingEmailUser => {
-          if (existingEmailUser) {
-            req.flash('errors', { msg: 'There is already an account using this email address. Sign in to that account and link it with GitHub manually from Account Settings.' });
-            done(null);
-          } else {
-              const user = new User();
-              user.email = _.get(_.orderBy(profile.emails, ['primary', 'verified'], ['desc', 'desc']), [0, 'value'], null);
-              user.githubId = profile.id;
-              user.tokens.push({ kind: 'github', accessToken });
-              user.profile.name = profile.displayName;
-              user.profile.picture = profile._json.avatar_url;
-              user.profile.location = profile._json.location;
-              user.profile.website = profile._json.blog;
-              return user.update({ email: user.email, githubId: user.githubId, tokens: {...user.tokens, github: accessToken}, profile: { ...user.profile }})
-          }
-        })
-        .then(updatedUser => {
-          console.log("UPDATED GITHUB USER");
-          done(null, updatedUser);
         })
         .catch(err => done(err));
   }
