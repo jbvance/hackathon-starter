@@ -5,7 +5,8 @@ const passport = require('passport');
 const _ = require('lodash');
 const validator = require('validator');
 const mailChecker = require('mailchecker');
-//const Sequelize = require('sequelize');
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
 //const db = require('../models/index');
 const User = require('../models/index').User;
 
@@ -287,15 +288,13 @@ exports.getReset = (req, res, next) => {
   }
 
   User
-    .findOne({ passwordResetToken: req.params.token })
-    .where('passwordResetExpires').gt(Date.now())
-    .exec((err, user) => {
-      if (err) { return next(err); }
-      if (!user) {
+    .findOne({ where: { resetPasswordToken: req.params.token, resetPasswordExpires: {[Op.gt]: Date.now() }} })
+    .then(user => {
+       if (!user) {
         req.flash('errors', { msg: 'Password reset token is invalid or has expired.' });
         return res.redirect('/forgot');
       }
-      res.render('account/reset', {
+       res.render('account/reset', {
         title: 'Password Reset'
       });
     });
@@ -438,22 +437,26 @@ exports.postReset = (req, res, next) => {
 
   const resetPassword = () =>
     User
-      .findOne({ passwordResetToken: req.params.token })
-      .where('passwordResetExpires').gt(Date.now())
+      .findOne({ where: { resetPasswordToken: req.params.token, resetPasswordExpires: {[Op.gt]: Date.now() }} })
       .then((user) => {
         if (!user) {
           req.flash('errors', { msg: 'Password reset token is invalid or has expired.' });
           return res.redirect('back');
         }
-        user.password = req.body.password;
-        user.passwordResetToken = undefined;
-        user.passwordResetExpires = undefined;
-        return user.save().then(() => new Promise((resolve, reject) => {
-          req.logIn(user, (err) => {
-            if (err) { return reject(err); }
-            resolve(user);
-          });
-        }));
+        user.encryptPassword(req.body.password, (hash, err) => {
+          user.password = hash;
+           user.passwordResetToken = undefined;
+          user.passwordResetExpires = undefined;
+          return user.save({...user})
+            .then(() => new Promise((resolve, reject) => {
+              req.logIn(user, (err) => {
+                console.log("LOGGING IN");
+                if (err) { return reject(err); }
+                resolve(user);
+              });
+            }));
+        })
+       
       });
 
   const sendResetPasswordEmail = (user) => {
@@ -537,21 +540,23 @@ exports.postForgot = (req, res, next) => {
 
   const setRandomToken = (token) =>
     User
-      .findOne({ email: req.body.email })
+      .findOne({ where: { email: req.body.email }})
       .then((user) => {
         if (!user) {
           req.flash('errors', { msg: 'Account with that email address does not exist.' });
         } else {
-          user.passwordResetToken = token;
-          user.passwordResetExpires = Date.now() + 3600000; // 1 hour
-          user = user.save();
+          user.resetPasswordToken = token;
+          user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+          user = user.save({ ...user });
         }
         return user;
       });
+      
 
   const sendForgotPasswordEmail = (user) => {
     if (!user) { return; }
-    const token = user.passwordResetToken;
+    const token = user.resetPasswordToken;
+    console.log("INFO", process.env.SENDGRID_USER,process.env.SENDGRID_PASSWORD )
     let transporter = nodemailer.createTransport({
       service: 'SendGrid',
       auth: {
@@ -577,6 +582,8 @@ exports.postForgot = (req, res, next) => {
           console.log('WARNING: Self signed certificate in certificate chain. Retrying with the self signed certificate. Use a valid certificate if in production.');
           transporter = nodemailer.createTransport({
             service: 'SendGrid',
+            host: 'smtp.sendgrid.net',
+            port: 587,
             auth: {
               user: process.env.SENDGRID_USER,
               pass: process.env.SENDGRID_PASSWORD
