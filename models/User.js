@@ -88,7 +88,8 @@ module.exports = function(db, DataTypes) {
     tokens: {
       type: DataTypes.JSON,
       defaultValue: {}
-    }
+    },
+    emailVerificationToken: DataTypes.STRING
   }, {
     tableName: 'pl_users',
     instanceMethods: instanceMethods,

@@ -316,10 +316,9 @@ exports.getVerifyEmailToken = (req, res, next) => {
     req.flash('errors', validationErrors);
     return res.redirect('/account');
   }
-
   if (req.params.token === req.user.emailVerificationToken) {
     User
-      .findOne({ email: req.user.email })
+      .findOne({ where: { email: req.user.email }})
       .then((user) => {
         if (!user) {
           req.flash('errors', { msg: 'There was an error in loading your profile.' });
@@ -327,7 +326,10 @@ exports.getVerifyEmailToken = (req, res, next) => {
         }
         user.emailVerificationToken = '';
         user.emailVerified = true;
-        user = user.save();
+        user = user.save({ 
+          emailVerificationToken: user.emailVerificationToken, 
+          emailVerified: user.emailVerified
+        });
         req.flash('info', { msg: 'Thank you for verifying your email address.' });
         return res.redirect('/account');
       })
@@ -359,10 +361,10 @@ exports.getVerifyEmail = (req, res, next) => {
 
   const setRandomToken = (token) => {
     User
-      .findOne({ email: req.user.email })
+      .findOne({ where: {email: req.user.email }})
       .then((user) => {
         user.emailVerificationToken = token;
-        user = user.save();
+        user = user.save({ emailVerificationToken: token});
       });
     return token;
   };
@@ -450,7 +452,6 @@ exports.postReset = (req, res, next) => {
           return user.save({...user})
             .then(() => new Promise((resolve, reject) => {
               req.logIn(user, (err) => {
-                console.log("LOGGING IN");
                 if (err) { return reject(err); }
                 resolve(user);
               });
@@ -556,7 +557,6 @@ exports.postForgot = (req, res, next) => {
   const sendForgotPasswordEmail = (user) => {
     if (!user) { return; }
     const token = user.resetPasswordToken;
-    console.log("INFO", process.env.SENDGRID_USER,process.env.SENDGRID_PASSWORD )
     let transporter = nodemailer.createTransport({
       service: 'SendGrid',
       auth: {
