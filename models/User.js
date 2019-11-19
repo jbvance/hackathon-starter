@@ -91,7 +91,7 @@ module.exports = function(db, DataTypes) {
     },
     emailVerificationToken: DataTypes.STRING
   }, {
-    tableName: 'pl_users',
+    tableName: 'users',
     instanceMethods: instanceMethods,
     classMethods: {
       associate: function(models) {
@@ -159,17 +159,16 @@ module.exports = function(db, DataTypes) {
           website: ''
         };
         user.tokens = user.tokens || {};
-         console.log("IN BEFORE CREATE HOOK", user);
-    if(user.changed('password')) {
-        user.encryptPassword(user.password, function(hash, err) {
-          if (err) {
-            reject(err);
+        if(user.changed('password')) {
+            user.encryptPassword(user.password, function(hash, err) {
+              if (err) {
+                reject(err);
+              }
+              user.password = hash;
+              resolve();
+            });
           }
-          user.password = hash;
-          resolve();
-        });
-      }
-      resolve();
+        resolve();
     })
     
   });
