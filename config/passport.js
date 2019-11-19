@@ -423,37 +423,6 @@ const googleStrategyConfig = new GoogleStrategy({
         done(null, savedUser);
       })
       .catch(err => done(err));
-    // User.findOne({ where: { googleId: profile.id }}, (err, existingUser) => {
-    //   if (err) { return done(err); }
-    //   if (existingUser) {
-    //     return done(null, existingUser);
-    //   }
-    //   User.findOne({ where: { email: profile.emails[0].value }}, (err, existingEmailUser) => {
-    //     console.log("GOT HERE IN GOOGLE");
-    //     if (err) { return done(err); }
-    //     if (existingEmailUser) {
-    //       req.flash('errors', { msg: 'There is already an account using this email address. Sign in to that account and link it with Google manually from Account Settings.' });
-    //       done(err);
-    //     } else {
-    //       const user = new User();
-    //       user.email = profile.emails[0].value;
-    //       user.googleId = profile.id;
-    //       user.tokens['google'] = {
-    //         accessToken,
-    //         accessTokenExpires: moment().add(params.expires_in, 'seconds').format(),
-    //         refreshToken
-    //       };
-    //       user.profile.name = profile.displayName;
-    //       user.profile.gender = profile._json.gender;
-    //       user.profile.picture = profile._json.picture;
-    //     user.save({ googleId: user.googleId, tokens: { ...user.tokens, google: { ...user.tokens['google']}, profile: {...user.profile }}})
-    //         .then(savedUser =>{
-    //           done(null, savedUser);
-    //         })
-    //         .catch(err => done(err));
-    //     }
-    //   });
-    // });
   }
 });
 passport.use('google', googleStrategyConfig);
